@@ -117,10 +117,10 @@ def info(message, verbose=True, status=''):
       else: color=''
       print str(color + message + bcolors.ENDC)   
 
-def printstat(lst=[], items=[]):
+def printstat(top=None, lst=[], items=[]):
    ''' affiche les elements dir, fic, lnk, cin, cout ou all
    '''
-   data = run(lst=lst, dryrun=True, verbose=False)
+   data = run(top=top, lst=lst, dryrun=True, verbose=False)
    if len(items) == 0: 
       items.append('all')
    for k in data.keys():
@@ -191,17 +191,23 @@ def run(top=None, lst=[], dryrun=False, dryrunko=False, verbose=True):
          elif dryrunko: exitstatus = 1
          else:
             checkin = pexpect.spawn('ci -u %s' % systemfile)
-            checkin.expect('>> ')
-            checkin.sendline('fichier initial')
-	    checkin.sendline('.')
-            checkin.expect(pexpect.EOF)
-            checkin.close()
+            i = checkin.expect(['>> ', pexpect.TIMEOUT, pexpect.EOF], timeout=3)
+            if i == 0:
+               checkin.sendline('fichier initial')
+	       checkin.sendline('.')
+               checkin.expect(pexpect.EOF)
+               checkin.close()
+            if i == 1:
+               print(checkin.before, checkin.after)
+               sys.exit(1)
+            if i == 2:
+               checkin.close()
             exitstatus = checkin.exitstatus
          if exitstatus == 0:
-            info('[cin][ok] ajout de %s dans rcs' % systemfile, status='ok', verbose=verbose)
+            info('[cin][ok] ajout de %s' % systemfile, status='ok', verbose=verbose)
             rcsbase['cin'].append((systemfile, 'ok'))
          else:
-            info('[cin][ko] ajout de %s dans rcs' % systemfile, status='ko', verbose=verbose)
+            info('[cin][ko] ajout de %s' % systemfile, status='ko', verbose=verbose)
             rcsbase['cin'].append((systemfile, 'ko'))
       # check out des fichiers controles
       else:
@@ -214,18 +220,18 @@ def run(top=None, lst=[], dryrun=False, dryrunko=False, verbose=True):
 	    checkout.close()
             exitstatus = checkout.exitstatus
          if exitstatus == 0:
-            info('[out][ok] restauration de %s depuis rcs' % systemfile, status='ok', verbose=verbose)
+            info('[out][ok] restauration de %s' % systemfile, status='ok', verbose=verbose)
             rcsbase['cout'].append((systemfile, 'ok'))
          else:
-            info('[out][ko] restauration de %s depuis rcs' % systemfile, status='ko', verbose=verbose)
+            info('[out][ko] restauration de %s' % systemfile, status='ko', verbose=verbose)
             rcsbase['cout'].append((systemfile, 'ko'))
    return rcsbase
 
-def runback(lst=[]):
+def runback(top=None, lst=[]):
    ''' retablit les fichiers dans leur version initiale
        supprimme les liens dans le systeme de fichier
    '''
-   data = run(lst=lst, dryrun=True, verbose=False)
+   data = run(top=top, lst=lst, dryrun=True, verbose=False)
    # restauration des fichier en version 1.1
    # et suppression des liens symboliques
    for k in data.keys():
@@ -236,11 +242,12 @@ def runback(lst=[]):
                checkout.expect(pexpect.EOF)
                checkout.close()
                if checkout.exitstatus == 0:
-                  info('[out][ok] restauration en version 1.1 de %s depuis rcs' % fic, status='ok')
+                  info('[out][ok] restauration en version 1.1 de %s' % fic, status='ok')
                else:
-                  info('[out][ko] restauration en version 1.1 de %s depuis rcs' % fic, status='ko')
+                  info('[out][ko] restauration en version 1.1 de %s' % fic, status='ko')
             else:
                info('[out] rien a faire pour %s' % fic)
+   for k in data.keys():
       if k == 'lnk':
          for lnk in set(data[k]):
             if os.path.islink(lnk):
@@ -249,7 +256,7 @@ def runback(lst=[]):
             else:
                info('[lnk] rien a faire pour %s' % lnk)
 
-def change(lst=[], fic=None, notification='modification', verbose=True):
+def change(lst=[], fic=None, notification='', verbose=True):
    ''' modifie un fichier et enregistre dans rcs la revision
    '''
    if fic + '\n' in lst:
@@ -350,10 +357,12 @@ if __name__ == '__main__':
             sys.exit(1)
          fichier = sys.argv[2]
          notification= ' '.join(sys.argv[3:])
+         if len(notification) == 0:
+            notification = 'mise a jour: raison inconnue'
          change(lst=rcsfiles, fic=fichier, notification=notification)
       elif sys.argv[1] == 'print':
          arg = sys.argv[2:]
-         printstat(lst=rcsfiles, items=arg)
+         printstat(top=RCSTOP, lst=rcsfiles, items=arg)
       elif sys.argv[1] == 'rlog':
          try:
             fichier = sys.argv[2]
