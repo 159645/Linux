@@ -1,0 +1,9 @@
+# File: /etc/sysconfig/rcsfiles
+# check itself
+/etc/sysconfig/rcsfiles
+
+# add file list 
+/etc/hosts.allow
+/etc/hosts.deny
+/etc/sudoers
+/etc/ssh/sshd_config

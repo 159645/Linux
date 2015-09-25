@@ -1,0 +1,4 @@
+# File: /etc/rcsctl
+TOP=/root
+RCSLST=/etc/sysconfig/rcscfiles
+TEXTEDITOR=vim
