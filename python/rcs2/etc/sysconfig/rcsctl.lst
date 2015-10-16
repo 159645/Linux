@@ -1,0 +1,4 @@
+# ajouter ci dessous les fichier a controler via rcs
+# le chemin complet est requis.
+
+/etc/hosts
